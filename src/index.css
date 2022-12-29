@@ -5,4 +5,5 @@ svg text {
 
 svg {
   background-color: #f0f0ff;
+  cursor: move;
 }
