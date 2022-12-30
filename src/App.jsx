@@ -1,4 +1,11 @@
 import { useRef, useState, useEffect } from "react";
+import ButtonGroup from "@mui/material/ButtonGroup";
+import Container from "@mui/material/Container";
+import CssBaseline from "@mui/material/CssBaseline";
+import Drawer from "@mui/material/Drawer";
+import IconButton from "@mui/material/IconButton";
+import Slider from "@mui/material/Slider";
+import SettingsIcon from "@mui/icons-material/Settings";
 import * as d3 from "d3";
 import data from "./map.json";
 
@@ -20,13 +27,16 @@ function ZoomableSVG({ children, width, height }) {
     d3.select(svgRef.current).call(zoom);
   }, []);
   return (
-    <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`}>
+    <svg ref={svgRef} className="map" viewBox={`0 0 ${width} ${height}`}>
       <g transform={`translate(${x},${y})scale(${k})`}>{children}</g>
     </svg>
   );
 }
 
-function Map({ startIndex, stopIndex }) {
+function Map({
+  monthRange: [startIndex, stopIndex],
+  displaySize: [displayWidth, displayHeight],
+}) {
   const left = d3.min(data.regions, (region) =>
     d3.min(region.polygon, (p) => p[0])
   );
@@ -41,20 +51,12 @@ function Map({ startIndex, stopIndex }) {
   );
   const width = right - left;
   const height = bottom - top;
-  const aspectRatio = height / width;
-  const contentWidth = 1000;
-  const contentHeight = contentWidth * aspectRatio;
   const displayMargin = 20;
-  const displayWidth = contentWidth + displayMargin * 2;
-  const displayHeight = contentHeight + displayMargin * 2;
-  const scaleX = d3
-    .scaleLinear()
-    .domain([left, right])
-    .range([0, contentWidth]);
-  const scaleY = d3
-    .scaleLinear()
-    .domain([bottom, top])
-    .range([0, contentHeight]);
+  const contentWidth = displayWidth - 2 * displayMargin;
+  const contentHeight = displayHeight - 2 * displayMargin;
+  const scale = Math.min(contentWidth / width, contentHeight / height);
+  const scaleX = (x) => (x - (left + right) / 2) * scale + contentWidth / 2;
+  const scaleY = (y) => (y - (top + bottom) / 2) * -scale + contentHeight / 2;
   const fontSizeScale = d3
     .scaleSqrt()
     .domain(d3.extent(data.regions, (region) => d3.sum(region.count)))
@@ -65,7 +67,7 @@ function Map({ startIndex, stopIndex }) {
     .x((region) => scaleX(d3.polygonCentroid(region.polygon)[0]))
     .y((region) => scaleY(d3.polygonCentroid(region.polygon)[1]))
     .weight((region) =>
-      d3.sum(d3.range(startIndex, stopIndex), (i) => region.count[i])
+      d3.sum(d3.range(startIndex, stopIndex + 1), (i) => region.count[i])
     )
     .size([contentWidth, contentHeight]);
   return (
@@ -130,43 +132,81 @@ function Map({ startIndex, stopIndex }) {
 }
 
 export default function App() {
-  const [startIndex, setStartIndex] = useState(0);
-  const [stopIndex, setStopIndex] = useState(data.months.length);
+  const mapWrapperRef = useRef();
+  const [displayMonthRange, setDisplayMonthRange] = useState([
+    0,
+    data.months.length - 1,
+  ]);
+  const [monthRange, setMonthRange] = useState(displayMonthRange);
+  const [displaySize, setDisplaySize] = useState([
+    window.innerWidth,
+    window.innerHeight,
+  ]);
+  const [showDrawer, setShowDrawer] = useState(false);
+  useEffect(() => {
+    const observer = new ResizeObserver(() => {
+      setDisplaySize([
+        mapWrapperRef.current.clientWidth,
+        mapWrapperRef.current.clientHeight,
+      ]);
+    });
+    observer.observe(mapWrapperRef.current);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
   return (
-    <div>
-      <div>
-        <select
-          value={startIndex}
-          onChange={(event) => {
-            setStartIndex(+event.target.value);
-          }}
-        >
-          {data.months.map((month, i) => {
-            return (
-              <option key={month} value={i}>
-                {month}
-              </option>
-            );
-          })}
-        </select>
-        <select
-          value={stopIndex}
-          onChange={(event) => {
-            setStopIndex(+event.target.value);
-          }}
-        >
-          {data.months.map((month, i) => {
-            return (
-              <option key={month} value={i + 1}>
-                {month}
-              </option>
-            );
-          })}
-        </select>
+    <CssBaseline>
+      <div
+        ref={mapWrapperRef}
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          overflow: "hidden",
+        }}
+      >
+        <Map monthRange={monthRange} displaySize={displaySize} />
       </div>
-      <div>
-        <Map startIndex={startIndex} stopIndex={stopIndex} />
+      <Drawer
+        anchor="bottom"
+        open={showDrawer}
+        onClose={() => {
+          setShowDrawer(false);
+        }}
+      >
+        <Container style={{ overflow: "hidden", padding: "2rem 2rem 0 2rem" }}>
+          <Slider
+            value={displayMonthRange}
+            marks
+            onChange={(_, newValue) => {
+              setDisplayMonthRange(newValue);
+            }}
+            onChangeCommitted={(_, newValue) => {
+              setMonthRange(newValue);
+            }}
+            disableSwap
+            valueLabelDisplay="on"
+            valueLabelFormat={(i) => data.months[i]}
+          />
+        </Container>
+      </Drawer>
+      <div
+        style={{ position: "absolute", bottom: 0, right: 0, padding: "1rem" }}
+      >
+        <ButtonGroup orientation="vertical" size="large">
+          <IconButton
+            size="large"
+            onClick={() => {
+              setShowDrawer(true);
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
+        </ButtonGroup>
       </div>
-    </div>
+    </CssBaseline>
   );
 }

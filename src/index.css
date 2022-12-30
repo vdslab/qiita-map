@@ -3,7 +3,8 @@ svg text {
   font-family: "Sawarabi Gothic", sans-serif;
 }
 
-svg {
+svg.map {
   background-color: #f0f0ff;
   cursor: move;
+  display: block;
 }
