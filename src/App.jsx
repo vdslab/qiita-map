@@ -206,6 +206,8 @@ export default function App() {
             disableSwap
             valueLabelDisplay="on"
             valueLabelFormat={(i) => data.months[i]}
+            min={0}
+            max={data.months.length - 1}
           />
         </Container>
       </Drawer>
