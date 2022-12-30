@@ -51,10 +51,10 @@ function Map({
   );
   const width = right - left;
   const height = bottom - top;
-  const displayMargin = 20;
-  const contentWidth = displayWidth - 2 * displayMargin;
-  const contentHeight = displayHeight - 2 * displayMargin;
-  const scale = Math.min(contentWidth / width, contentHeight / height);
+  const displayMargin = 5;
+  const contentWidth = 1000;
+  const contentHeight = 1000;
+  const scale = width > height ? contentWidth / width : contentHeight / height;
   const scaleX = (x) => (x - (left + right) / 2) * scale + contentWidth / 2;
   const scaleY = (y) => (y - (top + bottom) / 2) * -scale + contentHeight / 2;
   const fontSizeScale = d3
@@ -72,59 +72,75 @@ function Map({
     .size([contentWidth, contentHeight]);
   return (
     <ZoomableSVG width={displayWidth} height={displayHeight}>
-      <g transform={`translate(${displayMargin},${displayMargin})`}>
-        <g>
-          {data.regions.map((region) => {
-            const path = d3.path();
-            path.moveTo(
-              scaleX(region.polygon[0][0]),
-              scaleY(region.polygon[0][1])
-            );
-            for (let i = 1; i < region.polygon.length; ++i) {
-              path.lineTo(
-                scaleX(region.polygon[i][0]),
-                scaleY(region.polygon[i][1])
-              );
-            }
-            path.closePath();
-            return (
-              <g key={region.tag}>
-                <path
-                  d={path}
-                  fill={color(region.community)}
-                  stroke={color(region.community)}
-                />
-              </g>
-            );
-          })}
-        </g>
-        <g>
-          {kde(data.regions).map((polygon, i) => {
-            return (
-              <g key={i}>
-                <path d={d3.geoPath()(polygon)} fill="white" opacity="0.1" />
-              </g>
-            );
-          })}
-        </g>
-        <g>
-          {data.regions.map((region) => {
-            const [cx, cy] = d3.polygonCentroid(region.polygon);
-            return (
-              <g key={region.tag}>
-                <text
-                  x={scaleX(cx)}
-                  y={scaleY(cy)}
-                  fontSize={fontSizeScale(d3.sum(region.count))}
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                >
-                  {region.tag}
-                </text>
-              </g>
-            );
-          })}
+      <g transform={`translate(${displayWidth / 2},${displayHeight / 2})`}>
+        <g
+          transform={`scale(${
+            displayWidth < displayHeight
+              ? (displayWidth - 2 * displayMargin) / contentWidth
+              : (displayHeight - 2 * displayMargin) / contentHeight
+          })`}
+        >
+          <g
+            transform={`translate(${-contentWidth / 2},${-contentHeight / 2})`}
+          >
+            <g>
+              {data.regions.map((region) => {
+                const path = d3.path();
+                path.moveTo(
+                  scaleX(region.polygon[0][0]),
+                  scaleY(region.polygon[0][1])
+                );
+                for (let i = 1; i < region.polygon.length; ++i) {
+                  path.lineTo(
+                    scaleX(region.polygon[i][0]),
+                    scaleY(region.polygon[i][1])
+                  );
+                }
+                path.closePath();
+                return (
+                  <g key={region.tag}>
+                    <path
+                      d={path}
+                      fill={color(region.community)}
+                      stroke={color(region.community)}
+                    />
+                  </g>
+                );
+              })}
+            </g>
+            <g>
+              {kde(data.regions).map((polygon, i) => {
+                return (
+                  <g key={i}>
+                    <path
+                      d={d3.geoPath()(polygon)}
+                      fill="white"
+                      opacity="0.1"
+                    />
+                  </g>
+                );
+              })}
+            </g>
+            <g>
+              {data.regions.map((region) => {
+                const [cx, cy] = d3.polygonCentroid(region.polygon);
+                return (
+                  <g key={region.tag}>
+                    <text
+                      x={scaleX(cx)}
+                      y={scaleY(cy)}
+                      fontSize={fontSizeScale(d3.sum(region.count))}
+                      fontWeight="bold"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                    >
+                      {region.tag}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          </g>
         </g>
       </g>
     </ZoomableSVG>
